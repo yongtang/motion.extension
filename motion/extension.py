@@ -21,7 +21,7 @@ class MotionExtension(omni.ext.IExt):
                 print("[MotionExtension] Websocket cancel")
                 raise
 
-        loop = omni.kit.app.get_app().get_update_event_stream().get_loop()
+        loop = asyncio.get_event_loop()
         self.server = asyncio.run_coroutine_threadsafe(f(), loop)
         print("[MotionExtension] Extension startup")
 
@@ -34,7 +34,7 @@ class MotionExtension(omni.ext.IExt):
                 except asyncio.CancelledError:
                     pass
 
-        loop = omni.kit.app.get_app().get_update_event_stream().get_loop()
+        loop = asyncio.get_event_loop()
         asyncio.run_coroutine_threadsafe(f(getattr(self, "server", None)), loop)
         self.server = None
         print("[MotionExtension] Extension shutdown")

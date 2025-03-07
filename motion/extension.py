@@ -5,17 +5,22 @@ from . import websocket
 
 class MotionExtension(omni.ext.IExt):
     def on_startup(self, ext_id: str):
-        self.server = asyncio.get_event_loop().create_task(
-            uvicorn.Server(
-                uvicorn.Config(
+        async def f():
+            try:
+                config = uvicorn.Config(
                     websocket.app,
                     host="0.0.0.0",
                     port=5000,
                     log_level="info",
                     loop="asyncio",
                 )
-            ).serve()
-        )
+                server = uvicorn.Server(config)
+                await server.serve()
+            except asyncio.CancelledError:
+                print("[MotionExtension] Websocket cancel")
+                raise
+
+        self.server = asyncio.create_task(f())
         print("[MotionExtension] Extension startup")
 
     def on_shutdown(self):
@@ -27,6 +32,6 @@ class MotionExtension(omni.ext.IExt):
                 except asyncio.CancelledError:
                     pass
 
-        asyncio.get_event_loop().run_until_complete(f(getattr(self, "server", None)))
+        asyncio.ensure_future(f(getattr(self, "server", None)))
         self.server = None
         print("[MotionExtension] Extension shutdown")

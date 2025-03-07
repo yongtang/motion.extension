@@ -1,4 +1,5 @@
 import omni.ext
+import omni.kit.app
 import asyncio, uvicorn
 from . import websocket
 
@@ -20,7 +21,8 @@ class MotionExtension(omni.ext.IExt):
                 print("[MotionExtension] Websocket cancel")
                 raise
 
-        self.server = asyncio.create_task(f())
+        loop = omni.kit.app.get_app().get_update_event_stream().get_loop()
+        self.server = asyncio.run_coroutine_threadsafe(f(), loop)
         print("[MotionExtension] Extension startup")
 
     def on_shutdown(self):
@@ -32,6 +34,7 @@ class MotionExtension(omni.ext.IExt):
                 except asyncio.CancelledError:
                     pass
 
-        asyncio.ensure_future(f(getattr(self, "server", None)))
+        loop = omni.kit.app.get_app().get_update_event_stream().get_loop()
+        asyncio.run_coroutine_threadsafe(f(getattr(self, "server", None)), loop)
         self.server = None
         print("[MotionExtension] Extension shutdown")

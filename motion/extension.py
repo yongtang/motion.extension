@@ -18,6 +18,7 @@ class MotionExtension(omni.ext.IExt):
                 await server.serve()
             except asyncio.CancelledError:
                 server.should_exit = True
+                server.force_exit = True
                 print("[MotionExtension] Websocket cancel")
                 raise
 

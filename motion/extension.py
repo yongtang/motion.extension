@@ -5,6 +5,7 @@ from . import websocket
 
 class MotionExtension(omni.ext.IExt):
     def __init__(self):
+        super().__init__()
         self.ws_server = websocket.WebSocketServer()
 
     def on_startup(self, ext_id):

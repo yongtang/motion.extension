@@ -1,5 +1,4 @@
 import omni.ext
-import omni.kit.app
 import asyncio, uvicorn
 from . import websocket
 
@@ -18,6 +17,7 @@ class MotionExtension(omni.ext.IExt):
                 server = uvicorn.Server(config)
                 await server.serve()
             except asyncio.CancelledError:
+                server.should_exit = True
                 print("[MotionExtension] Websocket cancel")
                 raise
 

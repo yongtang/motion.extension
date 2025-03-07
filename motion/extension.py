@@ -1,6 +1,5 @@
-import asyncio
 import omni.ext
-from . import websocket
+import asyncio, websockets
 
 
 class MotionExtension(omni.ext.IExt):
@@ -14,26 +13,43 @@ class MotionExtension(omni.ext.IExt):
             ext_path = ext_manager.get_extension_path(ext_id)
             config = toml.load(os.path.join(ext_path, "config.toml"))
             print("[MotionExtension] Extension config: {}".format(config))
-            server = config.get("nats_ws_url", "ws://localhost:8080") or server
+            server = config.get("server", server) or server
         except Exception as e:
             print("[MotionExtension] Extension config: {}".format(e))
         print("[MotionExtension] Extension server: {}".format(server))
 
         self.server = server
 
-        self.ws_server = websocket.WebSocketServer()
-
     def on_startup(self, ext_id):
         async def f():
             while self.running:
-                print("[MotionExtension] Extension websocket")
-                await asyncio.sleep(2)
+                try:
+                    async with websockets.connect(self.server) as ws:
+                        await ws.send(toml.dumps({"op": "connect", "verbose": True}))
+                        await ws.send(
+                            toml.dumps(
+                                {"op": "sub", "subject": "test.subject", "sid": 1}
+                            )
+                        )
+                        while self.running:
+                            try:
+                                response = await asyncio.wait_for(
+                                    ws.recv(), timeout=RECV_TIMEOUT
+                                )
+                                print(
+                                    "[MotionExtension] Extension server: {}".format(
+                                        response
+                                    )
+                                )
+                            except asyncio.TimeoutError:
+                                pass
+                except Exception as e:
+                    print("[MotionExtension] Extension server: {}".format(e))
+                    await asyncio.sleep(1)
 
         self.running = True
         loop = asyncio.get_event_loop()
         self.server_task = loop.create_task(f())
-
-        loop.create_task(self.ws_server.start())
         print("[MotionExtension] Extension startup")
 
     def on_shutdown(self):
@@ -52,6 +68,4 @@ class MotionExtension(omni.ext.IExt):
         self.running = False
         loop = asyncio.get_event_loop()
         loop.run_until_complete(f())
-
-        loop.run_until_complete(self.ws_server.stop())
         print("[MotionExtension] Extension shutdown")

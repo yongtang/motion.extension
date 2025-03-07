@@ -19,13 +19,14 @@ class MotionExtension(omni.ext.IExt):
         print("[MotionExtension] Extension startup")
 
     def on_shutdown(self):
-        if getattr(self, "server", None) and not self.server.done():
-            self.server.cancel()
-            try:
-                asyncio.get_event_loop().run_until_complete(self.server)
-            except asyncio.CancelledError:
-                print("[MotionExtension] Server shutdown")
-            except RuntimeError as e:
-                print("[MotionExtension] Server exception: {}".format(e))
-            self.server = None
+        async def f(task):
+            if task and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+        asyncio.get_event_loop().run_until_complete(f(getattr(self, "server", None)))
+        self.server = None
         print("[MotionExtension] Extension shutdown")

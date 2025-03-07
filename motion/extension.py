@@ -1,22 +1,18 @@
+import asyncio
 import omni.ext
-import asyncio, uvicorn, multiprocessing
 from . import websocket
 
 
 class MotionExtension(omni.ext.IExt):
-    def on_startup(self, ext_id: str):
-        def f(data):
-            websocket.app.extra["data"] = data
-            uvicorn.run(websocket.app, host="0.0.0.0", port=5000, log_level="info")
+    def __init__(self):
+        self.ws_server = websocket.WebSocketServer()
 
-        self.data = multiprocessing.Value("data", "")
-        self.server = multiprocessing.Process(target=f, args=(self.data,), daemon=True)
-        self.server.start()
+    def on_startup(self, ext_id):
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.ws_server.start())
         print("[MotionExtension] Extension startup")
 
     def on_shutdown(self):
-        if getattr(self, "server") and self.server and self.server.is_alive():
-            self.server.terminate()
-            self.server.join()
-            self.server = None
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.ws_server.stop())
         print("[MotionExtension] Extension shutdown")

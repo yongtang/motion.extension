@@ -1,41 +1,22 @@
 import omni.ext
-import asyncio, uvicorn
+import asyncio, uvicorn, multiprocessing
 from . import websocket
 
 
 class MotionExtension(omni.ext.IExt):
     def on_startup(self, ext_id: str):
-        async def f():
-            try:
-                config = uvicorn.Config(
-                    websocket.app,
-                    host="0.0.0.0",
-                    port=5000,
-                    log_level="info",
-                    loop="asyncio",
-                )
-                server = uvicorn.Server(config)
-                await server.serve()
-            except asyncio.CancelledError:
-                server.should_exit = True
-                server.force_exit = True
-                print("[MotionExtension] Websocket cancel")
-                raise
+        def f(data):
+            websocket.app.extra["data"] = data
+            uvicorn.run(websocket.app, host="0.0.0.0", port=5000, log_level="info")
 
-        loop = asyncio.get_event_loop()
-        self.server = asyncio.run_coroutine_threadsafe(f(), loop)
+        self.data = multiprocessing.Value("data", "")
+        self.server = multiprocessing.Process(target=f, args=(self.data,), daemon=True)
+        self.server.start()
         print("[MotionExtension] Extension startup")
 
     def on_shutdown(self):
-        async def f(task):
-            if task and not task.done():
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-
-        loop = asyncio.get_event_loop()
-        asyncio.run_coroutine_threadsafe(f(getattr(self, "server", None)), loop)
-        self.server = None
+        if getattr(self, "server") and self.server and self.server.is_alive():
+            self.server.terminate()
+            self.server.join()
+            self.server = None
         print("[MotionExtension] Extension shutdown")

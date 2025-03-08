@@ -12,7 +12,9 @@ class MotionExtension(omni.ext.IExt):
             ext_manager = omni.kit.app.get_app().get_extension_manager()
             ext_id = ext_manager.get_extension_id_by_module(__name__)
             ext_path = ext_manager.get_extension_path(ext_id)
-            config = toml.load(os.path.join(ext_path, "config.toml"))
+            config = os.path.join(ext_path, "config.toml")
+            print("[MotionExtension] Extension config: {}".format(config))
+            config = toml.load(config)
             print("[MotionExtension] Extension config: {}".format(config))
             server = config.get("server", server) or server
         except Exception as e:

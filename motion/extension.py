@@ -1,6 +1,6 @@
 import omni.ext
 import omni.kit.app
-import asyncio, websockets, toml, os
+import asyncio, nats, toml, os
 
 
 class MotionExtension(omni.ext.IExt):
@@ -24,29 +24,21 @@ class MotionExtension(omni.ext.IExt):
         self.server = server
 
     def on_startup(self, ext_id):
+        async def message(e):
+            print("[MotionExtension] Extension server: {}".format(e))
+
         async def f():
             while self.running:
                 try:
-                    async with websockets.connect(self.server) as ws:
-                        await ws.send(toml.dumps({"op": "connect", "verbose": True}))
-                        await ws.send(
-                            toml.dumps(
-                                {"op": "sub", "subject": "test.subject", "sid": 1}
-                            )
-                        )
-                        while self.running:
-                            try:
-                                response = await asyncio.wait_for(ws.recv(), timeout=1.0)
-                                print(
-                                    "[MotionExtension] Extension server: {}".format(
-                                        response
-                                    )
-                                )
-                            except asyncio.TimeoutError:
-                                pass
+                    nc = await nats.connect("ws://localhost:8081")  # Ensure this is the correct WebSocket URL
+                    await nc.subscribe("test.subject", cb=message)
+                    await asyncio.sleep(10)
                 except Exception as e:
                     print("[MotionExtension] Extension server: {}".format(e))
                     await asyncio.sleep(1)
+                finally:
+                    await nc.close()
+
 
         self.running = True
         loop = asyncio.get_event_loop()

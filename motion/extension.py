@@ -52,7 +52,6 @@ class MotionExtension(omni.ext.IExt):
             if (
                 getattr(self, "server_task")
                 and self.server_task
-                and not self.server_task.done()
             ):
                 try:
                     self.server_task.cancel()

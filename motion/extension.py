@@ -36,9 +36,7 @@ class MotionExtension(omni.ext.IExt):
                         )
                         while self.running:
                             try:
-                                response = await asyncio.wait_for(
-                                    ws.recv(), timeout=RECV_TIMEOUT
-                                )
+                                response = await asyncio.wait_for(ws.recv(), timeout=1.0)
                                 print(
                                     "[MotionExtension] Extension server: {}".format(
                                         response

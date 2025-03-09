@@ -87,7 +87,9 @@ class MotionExtension(omni.ext.IExt):
             print("[MotionExtension] Extension stage {}".format(stage))
 
             articulation = (
-                Articulation(self.articulation) if articulation else articulation
+                Articulation(self.articulation)
+                if self.articulation
+                else self.articulation
             )
             print("[MotionExtension] Extension articulation {}".format(articulation))
 

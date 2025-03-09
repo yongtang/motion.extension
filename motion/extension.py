@@ -25,7 +25,7 @@ class MotionExtension(omni.ext.IExt):
         self.server = server
 
     def on_startup(self, ext_id):
-        async def f():
+        async def f(self):
             try:
                 while self.running:
                     try:

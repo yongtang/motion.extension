@@ -86,12 +86,14 @@ class MotionExtension(omni.ext.IExt):
             stage = context.get_stage()
             print("[MotionExtension] Extension stage {}".format(stage))
 
-            articulation = (
-                Articulation(self.articulation)
-                if self.articulation
-                else self.articulation
-            )
             print("[MotionExtension] Extension articulation {}".format(articulation))
+            if articulation:
+                articulation = Articulation(self.articulation)
+                print(
+                    "[MotionExtension] Extension articulation {} ({})".format(
+                        articulation, articulation.get_dof_names()
+                    )
+                )
 
         self.running = True
         loop = asyncio.get_event_loop()

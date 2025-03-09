@@ -55,9 +55,9 @@ class MotionExtension(omni.ext.IExt):
                                 pass
                 except asyncio.CancelledError:
                     raise
-                except Exception as e:
-                    print("[MotionExtension] Extension server4: {}".format(e))
-                    await asyncio.sleep(1)
+                #except Exception as e:
+                #    print("[MotionExtension] Extension server4: {}".format(e))
+                await asyncio.sleep(1)
           except asyncio.CancelledError:
             print("[MotionExtension] Extension server cancel")
           finally:

@@ -86,12 +86,11 @@ class MotionExtension(omni.ext.IExt):
             stage = context.get_stage()
             print("[MotionExtension] Extension stage {}".format(stage))
 
-            print("[MotionExtension] Extension articulation {}".format(articulation))
-            if articulation:
-                articulation = Articulation(self.articulation)
+            if self.articulation:
+                self.articulation = Articulation(self.articulation)
                 print(
                     "[MotionExtension] Extension articulation {} ({})".format(
-                        articulation, articulation.get_dof_names()
+                        self.articulation, self.articulation.get_dof_names()
                     )
                 )
 

@@ -41,11 +41,12 @@ class MotionExtension(omni.ext.IExt):
                                         )
                                     )
                                     head, body = response.split(b"\r\n", 1)
-                                    assert body.endswith(b"\r\n")
-                                    body = body[:-2]
+                                    if head.startswith(b"MSG "):
+                                        assert body.endswith(b"\r\n")
+                                        body = body[:-2]
 
-                                    op, sub, sid, count = head.split(b" ", 3)
-                                    if op == b"MSG":
+                                        op, sub, sid, count = head.split(b" ", 3)
+                                        assert op == b"MSG"
                                         assert sub
                                         assert sid
                                         assert int(count) == len(body)

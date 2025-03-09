@@ -1,4 +1,5 @@
 import omni.ext
+import omni.usd
 import omni.kit.app
 import asyncio, websockets, toml, json, os
 
@@ -70,13 +71,24 @@ class MotionExtension(omni.ext.IExt):
             finally:
                 print("[MotionExtension] Extension server exit")
 
+        async def g(self):
+            context = omni.usd.get_context()
+            while context.get_stage() is None:
+                print("[MotionExtension] Extension world wait")
+                await asyncio.sleep(0.5)  # Check every 500ms
+
+            print("[MotionExtension] Extension world ready")
+            stage = context.get_stage()
+            print("[MotionExtension] Extension stage {}".format(stage.GetDefaultPrim()))
+
         self.running = True
         loop = asyncio.get_event_loop()
-        self.server_task = loop.create_task(f())
+        loop.run_until_complete(g(self))
+        self.server_task = loop.create_task(f(self))
         print("[MotionExtension] Extension startup")
 
     def on_shutdown(self):
-        async def f():
+        async def f(self):
             if getattr(self, "server_task") and self.server_task:
                 self.server_task.cancel()
                 try:
@@ -88,5 +100,5 @@ class MotionExtension(omni.ext.IExt):
 
         self.running = False
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(f())
+        loop.run_until_complete(f(self))
         print("[MotionExtension] Extension shutdown")

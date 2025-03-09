@@ -73,9 +73,12 @@ class MotionExtension(omni.ext.IExt):
 
         async def g(self):
             context = omni.usd.get_context()
-            while context.get_stage() is None:
+            while (
+                context.get_stage() is None
+                or context.get_stage().GetDefaultPrim() is None
+            ):
                 print("[MotionExtension] Extension world wait")
-                await asyncio.sleep(0.5)  # Check every 500ms
+                await asyncio.sleep(0.5)
 
             print("[MotionExtension] Extension world ready")
             stage = context.get_stage()

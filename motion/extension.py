@@ -19,7 +19,7 @@ class MotionExtension(omni.ext.IExt):
             server = config.get("server", server) or server
         except Exception as e:
             print("[MotionExtension] Extension config: {}".format(e))
-        print("[MotionExtension] Extension server: {}".format(server))
+        print("[MotionExtension] Extension server1: {}".format(server))
 
         self.server = server
 
@@ -29,12 +29,12 @@ class MotionExtension(omni.ext.IExt):
             while self.running:
                 try:
                     async with websockets.connect(self.server) as ws:
+                        await ws.send("SUB test.subject 1\r\n")
                         while self.running:
                             try:
-                                await ws.send("SUB test.subject 1\r\n")
-                                response = await asyncio.wait_for(ws.recv(), timeout=10)
+                                response = await asyncio.wait_for(ws.recv(), timeout=1.0)
                                 print(
-                                    "[MotionExtension] Extension server: {}".format(
+                                    "[MotionExtension] Extension server2: {}".format(
                                         response
                                     )
                                 )
@@ -49,14 +49,14 @@ class MotionExtension(omni.ext.IExt):
                                 assert int(count) == len(body)
 
                                 data = json.loads(body)
-                                print("[MotionExtension] Extension server: {}".format(data))
+                                print("[MotionExtension] Extension server3: {}".format(data))
                                 
                             except asyncio.TimeoutError:
                                 pass
                 except asyncio.CancelledError:
                     raise
                 except Exception as e:
-                    print("[MotionExtension] Extension server: {}".format(e))
+                    print("[MotionExtension] Extension server4: {}".format(e))
                     await asyncio.sleep(1)
           except asyncio.CancelledError:
             print("[MotionExtension] Extension server cancel")

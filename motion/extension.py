@@ -24,17 +24,15 @@ class MotionExtension(omni.ext.IExt):
         self.server = server
 
     def on_startup(self, ext_id):
+        async def message(e):
+            print("[MotionExtension] Extension server: {}".format(e))
+
         async def f():
             while self.running:
                 try:
                     nc = await nats.connect(self.server)
-                    sub = await nc.subscribe("test.subject")
-                    while self.runnig:
-                        try:
-                            msg = await sub.next_msg(timeout=1.0)
-                            print("[MotionExtension] Extension server: {}".format(msg))
-                        except asyncio.TimeoutError:
-                            pass
+                    await nc.subscribe("test.subject", cb=message)
+                    await asyncio.sleep(10)
                 except Exception as e:
                     print("[MotionExtension] Extension server: {}".format(e))
                     await asyncio.sleep(1)
@@ -54,8 +52,8 @@ class MotionExtension(omni.ext.IExt):
                 and self.server_task
                 and not self.server_task.done()
             ):
+                self.server_task.cancel()
                 try:
-                    self.server_task.cancel()
                     await self.server_task
                 except Exception as e:
                     print("[MotionExtension] Extension cancel")

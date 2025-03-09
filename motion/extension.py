@@ -32,7 +32,7 @@ class MotionExtension(omni.ext.IExt):
                         while self.running:
                             try:
                                 await ws.send("SUB test.subject 1\r\n")
-                                response = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                                response = await asyncio.wait_for(ws.recv(), timeout=10)
                                 print(
                                     "[MotionExtension] Extension server: {}".format(
                                         response

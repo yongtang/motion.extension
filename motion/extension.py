@@ -28,12 +28,7 @@ class MotionExtension(omni.ext.IExt):
             while self.running:
                 try:
                     async with websockets.connect(self.server) as ws:
-                        await ws.send(toml.dumps({"op": "connect", "verbose": True}))
-                        await ws.send(
-                            toml.dumps(
-                                {"op": "sub", "subject": "test.subject", "sid": 1}
-                            )
-                        )
+                        await ws.send("SUB test.subject 1\r\n")
                         while self.running:
                             try:
                                 response = await asyncio.wait_for(ws.recv(), timeout=1.0)

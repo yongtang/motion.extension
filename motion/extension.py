@@ -82,7 +82,7 @@ class MotionExtension(omni.ext.IExt):
 
             print("[MotionExtension] Extension world ready")
             stage = context.get_stage()
-            print("[MotionExtension] Extension stage {}".format(stage.GetDefaultPrim()))
+            print("[MotionExtension] Extension stage {} {}".format(stage.GetDefaultPrim(), type(stage)))
 
         self.running = True
         loop = asyncio.get_event_loop()

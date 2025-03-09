@@ -30,7 +30,7 @@ class MotionExtension(omni.ext.IExt):
         async def f():
             while self.running:
                 try:
-                    nc = await nats.connect(self.server)
+                    nc = await nats.connect("ws://localhost:8081")  # Ensure this is the correct WebSocket URL
                     await nc.subscribe("test.subject", cb=message)
                     await asyncio.sleep(10)
                 except Exception as e:

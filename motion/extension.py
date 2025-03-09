@@ -29,9 +29,9 @@ class MotionExtension(omni.ext.IExt):
             while self.running:
                 try:
                     async with websockets.connect(self.server) as ws:
-                        await ws.send("SUB test.subject 1\r\n")
                         while self.running:
                             try:
+                                await ws.send("SUB test.subject 1\r\n")
                                 response = await asyncio.wait_for(ws.recv(), timeout=1.0)
                                 print(
                                     "[MotionExtension] Extension server: {}".format(

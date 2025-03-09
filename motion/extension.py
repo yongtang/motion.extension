@@ -25,6 +25,7 @@ class MotionExtension(omni.ext.IExt):
 
     def on_startup(self, ext_id):
         async def f():
+          try:
             while self.running:
                 try:
                     async with websockets.connect(self.server) as ws:
@@ -52,9 +53,15 @@ class MotionExtension(omni.ext.IExt):
                                 
                             except asyncio.TimeoutError:
                                 pass
+                except asyncio.CancelledError:
+                    raise
                 except Exception as e:
                     print("[MotionExtension] Extension server: {}".format(e))
                     await asyncio.sleep(1)
+          except asyncio.CancelledError:
+            print("[MotionExtension] Extension server cancel")
+          finally:
+            print("[MotionExtension] Extension server exit")
 
         self.running = True
         loop = asyncio.get_event_loop()
@@ -66,13 +73,14 @@ class MotionExtension(omni.ext.IExt):
             if (
                 getattr(self, "server_task")
                 and self.server_task
-                # and not self.server_task.done()
             ):
                 self.server_task.cancel()
                 try:
                     await self.server_task
-                except Exception as e:
+                except asyncio.CancelledError:
                     print("[MotionExtension] Extension cancel")
+                except Exception as e:
+                    print("[MotionExtension] Extension exception {}".format(e))
 
         self.running = False
         loop = asyncio.get_event_loop()

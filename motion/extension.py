@@ -90,7 +90,7 @@ class MotionExtension(omni.ext.IExt):
                 self.articulation = Articulation(self.articulation)
                 print(
                     "[MotionExtension] Extension articulation {} ({})".format(
-                        self.articulation, self.articulation.get_dof_names()
+                        self.articulation, self.articulation.dof_names
                     )
                 )
 

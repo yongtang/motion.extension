@@ -37,6 +37,19 @@ class MotionExtension(omni.ext.IExt):
                                         response
                                     )
                                 )
+                                head, body = response.split(b"\r\n", 1)
+                                assert body.endswith(b"\r\n")
+                                body = body[:-2]
+
+                                op, sub, sid, count = head.split(b" ", 3)
+                                assert op == b"MSG"
+                                assert sub
+                                assert sid
+                                assert int(count) == len(body)
+
+                                data = json.loads(body)
+                                print("[MotionExtension] Extension server: {}".format(data))
+                                
                             except asyncio.TimeoutError:
                                 pass
                 except Exception as e:

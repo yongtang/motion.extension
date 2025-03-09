@@ -29,7 +29,7 @@ class MotionExtension(omni.ext.IExt):
                 try:
                     nc = await nats.connect(self.server)
                     sub = await nc.subscribe("test.subject")
-                    while self.running:
+                    while self.runnig:
                         try:
                             msg = await sub.next_msg(timeout=1.0)
                             print("[MotionExtension] Extension server: {}".format(msg))

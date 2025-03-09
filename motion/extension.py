@@ -24,7 +24,7 @@ class MotionExtension(omni.ext.IExt):
         self.server = server
 
     def on_startup(self, ext_id):
-        async def f(self):
+        async def f():
             while self.running:
                 try:
                     nc = await nats.connect(self.server)
@@ -44,11 +44,11 @@ class MotionExtension(omni.ext.IExt):
 
         self.running = True
         loop = asyncio.get_event_loop()
-        self.server_task = loop.create_task(f(self))
+        self.server_task = loop.create_task(f())
         print("[MotionExtension] Extension startup")
 
     def on_shutdown(self):
-        async def f(self):
+        async def f():
             if (
                 getattr(self, "server_task")
                 and self.server_task
@@ -62,5 +62,5 @@ class MotionExtension(omni.ext.IExt):
 
         self.running = False
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(f(self))
+        loop.run_until_complete(f())
         print("[MotionExtension] Extension shutdown")

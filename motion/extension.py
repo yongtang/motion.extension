@@ -1,6 +1,7 @@
 import omni.ext
 import omni.usd
 import omni.kit.app
+from omni.isaac.core.articulations import Articulation
 import asyncio, websockets, toml, json, os
 
 
@@ -9,6 +10,7 @@ class MotionExtension(omni.ext.IExt):
         super().__init__()
 
         server = "ws://localhost:8081"
+        articulation = None
         try:
             ext_manager = omni.kit.app.get_app().get_extension_manager()
             ext_id = ext_manager.get_extension_id_by_module(__name__)
@@ -18,11 +20,14 @@ class MotionExtension(omni.ext.IExt):
             config = toml.load(config)
             print("[MotionExtension] Extension config: {}".format(config))
             server = config.get("server", server) or server
+            articulation = config.get("articulation", articulation) or articulation
         except Exception as e:
             print("[MotionExtension] Extension config: {}".format(e))
         print("[MotionExtension] Extension server: {}".format(server))
+        print("[MotionExtension] Extension articulation: {}".format(articulation))
 
         self.server = server
+        self.articulation = articulation
 
     def on_startup(self, ext_id):
         async def f(self):
@@ -73,16 +78,18 @@ class MotionExtension(omni.ext.IExt):
 
         async def g(self):
             context = omni.usd.get_context()
-            while (
-                context.get_stage() is None
-                or context.get_stage().GetDefaultPrim() is None
-            ):
+            while context.get_stage() is None:
                 print("[MotionExtension] Extension world wait")
                 await asyncio.sleep(0.5)
-
             print("[MotionExtension] Extension world ready")
+
             stage = context.get_stage()
-            print("[MotionExtension] Extension stage {} {}".format(stage.GetDefaultPrim(), type(stage)))
+            print("[MotionExtension] Extension stage {}".format(stage))
+
+            articulation = (
+                Articulation(self.articulation) if articulation else articulation
+            )
+            print("[MotionExtension] Extension articulation {}".format(articulation))
 
         self.running = True
         loop = asyncio.get_event_loop()

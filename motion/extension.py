@@ -4,6 +4,7 @@ import omni.kit.app
 from omni.isaac.sensor import Camera
 from omni.isaac.core.articulations import Articulation
 import asyncio, websockets, toml, json, os
+import numpy as np
 
 
 class MotionExtension(omni.ext.IExt):
@@ -111,7 +112,15 @@ class MotionExtension(omni.ext.IExt):
                 while self.running:
                     try:
                         image = self.camera.get_rgba()
-                        print("[MotionExtension] Extension camera {}".format(image))
+                        if image:
+                            image = np.array(image, dtype=np.uint8)  # RGBA
+                            assert image.shape[-1] == 4, "camera {}".format(image.shape)
+                            image = image[:, :, :3][:, :, ::-1]  # BGR
+                            print(
+                                "[MotionExtension] Extension camera: {}".format(
+                                    image.shape
+                                )
+                            )
                     except asyncio.CancelledError:
                         raise
                     except Exception as e:

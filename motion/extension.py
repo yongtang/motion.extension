@@ -3,7 +3,7 @@ import omni.usd
 import omni.kit.app
 from omni.isaac.sensor import Camera
 from omni.isaac.core.articulations import Articulation
-import asyncio, websockets, toml, json, os
+import asyncio, websockets, toml, json, os, socket
 import numpy as np
 
 
@@ -34,6 +34,7 @@ class MotionExtension(omni.ext.IExt):
         self.camera = camera
         self.articulation = articulation
         self.server = server
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def on_startup(self, ext_id):
         async def f(self):
@@ -116,11 +117,8 @@ class MotionExtension(omni.ext.IExt):
                             image = np.array(image, dtype=np.uint8)  # RGBA
                             assert image.shape[-1] == 4, "camera {}".format(image.shape)
                             image = image[:, :, :3][:, :, ::-1]  # BGR
-                            print(
-                                "[MotionExtension] Extension camera: {}".format(
-                                    image.shape
-                                )
-                            )
+                            assert image.shape[-1] == 3, "camera {}".format(image.shape)
+                            self.socket.sendto(image.tobytes(), ("127.0.0.1", 6000))
                     except asyncio.CancelledError:
                         raise
                     except Exception as e:

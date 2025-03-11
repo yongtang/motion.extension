@@ -112,7 +112,7 @@ class MotionExtension(omni.ext.IExt):
                 while self.running:
                     try:
                         image = self.camera.get_rgba()
-                        if image:
+                        if len(image):
                             image = np.array(image, dtype=np.uint8)  # RGBA
                             assert image.shape[-1] == 4, "camera {}".format(image.shape)
                             image = image[:, :, :3][:, :, ::-1]  # BGR

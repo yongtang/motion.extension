@@ -106,10 +106,27 @@ class MotionExtension(omni.ext.IExt):
                     )
                 )
 
+        async def v(self):
+            try:
+                while self.running:
+                    try:
+                        image = self.camera.get_rgba()
+                        print("[MotionExtension] Extension camera {}".format(image))
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as e:
+                        print("[MotionExtension] Extension camera: {}".format(e))
+                    await asyncio.sleep(1 / 30)  # Maintain ~30 FPS
+            except asyncio.CancelledError:
+                print("[MotionExtension] Extension camera cancel")
+            finally:
+                print("[MotionExtension] Extension camera exit")
+
         self.running = True
         loop = asyncio.get_event_loop()
         loop.run_until_complete(g(self))
         self.server_task = loop.create_task(f(self))
+        self.camera_task = loop.create_task(v(self)) if self.camera else None
         print("[MotionExtension] Extension startup")
 
     def on_shutdown(self):
@@ -119,11 +136,22 @@ class MotionExtension(omni.ext.IExt):
                 try:
                     await self.server_task
                 except asyncio.CancelledError:
-                    print("[MotionExtension] Extension cancel")
+                    print("[MotionExtension] Extension server cancel")
                 except Exception as e:
-                    print("[MotionExtension] Extension exception {}".format(e))
+                    print("[MotionExtension] Extension server exception {}".format(e))
+
+        async def v(self):
+            if getattr(self, "camera_task") and self.camera_task:
+                self.camera_task.cancel()
+                try:
+                    await self.camera_task
+                except asyncio.CancelledError:
+                    print("[MotionExtension] Extension camera cancel")
+                except Exception as e:
+                    print("[MotionExtension] Extension camera exception {}".format(e))
 
         self.running = False
         loop = asyncio.get_event_loop()
         loop.run_until_complete(f(self))
+        loop.run_until_complete(v(self))
         print("[MotionExtension] Extension shutdown")

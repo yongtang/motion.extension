@@ -236,7 +236,10 @@ class MotionExtension(omni.ext.IExt):
         if self.position is not None:
             if self.step_position is not None:
                 delta_p = self.position[:3] - self.step_position[:3]
-                delta_r = quat_mul(self.position[3:], quat_inv(self.step_position[3:]))
+                delta_r = (
+                    R.from_quat(self.position[3:])
+                    * R.from_quat(self.step_position[3:]).inv()
+                ).as_quat()
 
                 joint_velocities = apply_differential_ik(delta_p, delta_r, delta)
 

@@ -4,6 +4,11 @@ import omni.kit.app
 from omni.isaac.sensor import Camera
 from omni.isaac.core.articulations import Articulation
 from omni.isaac.dynamic_control import _dynamic_control
+from omni.isaac.core.utils.transforms import (
+    quat_multiply,
+    quat_inverse,
+    quat_to_rot_matrix,
+)
 import asyncio, websockets, toml, json, os, socket
 import numpy as np
 
@@ -75,6 +80,22 @@ class MotionExtension(omni.ext.IExt):
                                                 data
                                             )
                                         )
+                                        self.position = np.array(
+                                            (
+                                                data["position"]["x"],
+                                                data["position"]["y"],
+                                                data["position"]["z"],
+                                                data["orientation"]["x"],
+                                                data["orientation"]["y"],
+                                                data["orientation"]["z"],
+                                                data["orientation"]["w"],
+                                            )
+                                        )
+                                        print(
+                                            "[MotionExtension] Extension position: {}".format(
+                                                self.position
+                                            )
+                                        )
 
                                 except asyncio.TimeoutError:
                                     pass
@@ -142,6 +163,9 @@ class MotionExtension(omni.ext.IExt):
             finally:
                 print("[MotionExtension] Extension camera exit")
 
+        self.position = None
+        self.step_position = None
+
         self.running = True
         loop = asyncio.get_event_loop()
         loop.run_until_complete(g(self))
@@ -156,7 +180,51 @@ class MotionExtension(omni.ext.IExt):
         )
 
     def step(self, delta: float):
-        print("[MotionExtension] Extension step {}", delta)
+        print("[MotionExtension] Extension step {}".format(delta))
+        if self.position is not None:
+            if self.step_position is not None:
+                delta_p = self.position[:3] - self.step_position[:3]
+                delta_r = quat_multiply(
+                    self.position[3:], quat_inverse(self.step_position[3:])
+                )
+
+                (position, orientation) = self.articulation.get_world_pose(
+                    self.effector
+                )
+
+                linear = delta_p / delta  # [vx, vy, vz]
+
+                # Compute angular velocity from quaternion difference
+                rotation = quat_multiply(
+                    delta_r, quat_inverse(orientation)
+                )  # Relative rotation
+                angular = quat_to_rot_matrix(rotation)[:3, 2] / delta  # [wx, wy, wz]
+
+                cartesian = np.hstack((linear, angular))  # Shape: (6,)
+
+                jacobian_matrix = self.articulation.compute_jacobian(
+                    self.effector
+                )  # Shape: (6, num_joints)
+
+                # Compute joint velocities using Jacobian pseudoinverse
+                jacobian_pinv = np.linalg.pinv(
+                    jacobian_matrix
+                )  # Moore-Penrose pseudoinverse
+                joint_velocities = (
+                    jacobian_pinv @ cartesian_velocity
+                )  # Shape: (num_joints,)
+
+                articulation_prim = dc.get_articulation(robot_prim_path)
+                self.dynamic_control.set_articulation_dof_velocity_targets(
+                    articulation_prim, joint_velocities
+                )
+
+                # Step simulation
+                self.dynamic_control.step(delta)
+
+            self.step_position = self.position
+
+        print("[MotionExtension] Extension curr {} {}".format(position, orientation))
 
     def on_shutdown(self):
         async def f(self):

@@ -123,6 +123,7 @@ class MotionExtension(omni.ext.IExt):
                 self.camera = None
 
             if self.articulation:
+                prim = self.articulation
                 self.articulation = Articulation(self.articulation)
                 print(
                     "[MotionExtension] Extension articulation {} ({})".format(
@@ -137,6 +138,7 @@ class MotionExtension(omni.ext.IExt):
                         self.dynamic_control
                     )
                 )
+                self.articulation_prim = self.dynamic_control.get_articulation(prim)
 
         async def v(self):
             try:
@@ -177,48 +179,70 @@ class MotionExtension(omni.ext.IExt):
 
     def step(self, delta: float):
         print("[MotionExtension] Extension step {}".format(delta))
+
+        def apply_differential_ik(delta_p, delta_r, delta_t):
+            """
+            Apply Differential IK (Jacobian-based) to move the end-effector smoothly over time.
+
+            Arguments:
+            - delta_p: [dx, dy, dz] position displacement
+            - delta_r: [dqx, dqy, dqz, dqw] quaternion rotation change
+            - delta_t: time step (seconds)
+            """
+            # Get current end effector pose
+            current_ee_pos, current_ee_rot = self.articulation.get_world_pose(
+                end_effector_path
+            )
+
+            # Compute linear velocity
+            linear_velocity = delta_p / delta_t  # [vx, vy, vz]
+
+            # Compute current and desired rotations
+            current_rot = R.from_quat(current_ee_rot)  # Current rotation
+            desired_rot = R.from_quat(delta_r)  # Desired rotation
+
+            # Compute relative rotation (delta rotation)
+            delta_rot = desired_rot * current_rot.inv()
+
+            # Convert delta rotation to angular velocity
+            angular_velocity = delta_rot.as_rotvec() / delta_t  # [wx, wy, wz]
+
+            # Combine linear and angular velocities
+            cartesian_velocity = np.hstack(
+                (linear_velocity, angular_velocity)
+            )  # Shape: (6,)
+
+            # Compute Jacobian matrix
+            jacobian_matrix = self.articulation.compute_jacobian(
+                end_effector_path
+            )  # Shape: (6, num_joints)
+
+            # Compute pseudoinverse of the Jacobian
+            jacobian_pinv = np.linalg.pinv(jacobian_matrix)  # Shape: (num_joints, 6)
+
+            # Compute joint velocities
+            joint_velocities = (
+                jacobian_pinv @ cartesian_velocity
+            )  # Shape: (num_joints,)
+
+            # Apply joint velocities to the robot
+            # articulation_prim = dc.get_articulation(robot_prim_path)
+            # dc.set_articulation_dof_velocity_targets(articulation_prim, joint_velocities)
+
+            # Do NOT call `dc.step(delta_t)` in an extension! The simulation loop handles stepping.
+
+            return joint_velocities
+
         if self.position is not None:
             if self.step_position is not None:
                 delta_p = self.position[:3] - self.step_position[:3]
                 delta_r = quat_mul(self.position[3:], quat_inv(self.step_position[3:]))
 
-                (position, orientation) = self.articulation.get_world_pose(
-                    self.effector
+                joint_velocities = apply_differential_ik(delta_p, delta_r, delta)
+
+                articulation_prim = self.dynamic_control.get_articulation(
+                    robot_prim_path
                 )
-
-                linear = delta_p / delta  # [vx, vy, vz]
-
-                # Compute angular velocity from quaternion difference
-                current_rot = R.from_quat(rotation)  # Current rotation
-                desired_rot = R.from_quat(delta_r)  # Desired rotation
-
-                # Compute relative rotation (delta rotation)
-                delta_rot = desired_rot * current_rot.inv()
-
-                # Convert delta rotation to angular velocity
-                angular_velocity = delta_rot.as_rotvec() / delta  # [wx, wy, wz]
-
-                # Combine linear and angular velocities
-                cartesian_velocity = np.hstack(
-                    (linear_velocity, angular_velocity)
-                )  # Shape: (6,)
-
-                # Compute Jacobian matrix
-                jacobian_matrix = robot.compute_jacobian(
-                    end_effector_path
-                )  # Shape: (6, num_joints)
-
-                # Compute pseudoinverse of the Jacobian
-                jacobian_pinv = np.linalg.pinv(
-                    jacobian_matrix
-                )  # Shape: (num_joints, 6)
-
-                # Compute joint velocities
-                joint_velocities = (
-                    jacobian_pinv @ cartesian_velocity
-                )  # Shape: (num_joints,)
-
-                articulation_prim = dc.get_articulation(robot_prim_path)
                 self.dynamic_control.set_articulation_dof_velocity_targets(
                     articulation_prim, joint_velocities
                 )

@@ -124,7 +124,7 @@ class MotionExtension(omni.ext.IExt):
 
             if self.articulation:
                 prim = self.articulation
-                self.articulation = Articulation(self.articulation)
+                self.articulation = Articulation(prim)
                 print(
                     "[MotionExtension] Extension articulation {} ({})".format(
                         self.articulation, self.articulation.dof_names

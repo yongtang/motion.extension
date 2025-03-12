@@ -223,6 +223,8 @@ class MotionExtension(omni.ext.IExt):
                     articulation_prim, joint_velocities
                 )
 
+                print("[MotionExtension] Extension {}".format(joint_velocities))
+
                 # Step simulation
                 self.dynamic_control.step(delta)
 

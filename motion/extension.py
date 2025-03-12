@@ -37,7 +37,7 @@ class MotionExtension(omni.ext.IExt):
         print("[MotionExtension] Extension effector: {}".format(effector))
 
         self.camera = camera
-        self.articulation_path = articulation_path
+        self.articulation_path = articulation
         self.server = server
         self.effector = effector
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

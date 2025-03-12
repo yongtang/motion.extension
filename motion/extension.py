@@ -37,7 +37,7 @@ class MotionExtension(omni.ext.IExt):
         print("[MotionExtension] Extension effector: {}".format(effector))
 
         self.camera = camera
-        self.articulation = articulation
+        self.articulation_path = articulation_path
         self.server = server
         self.effector = effector
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -122,9 +122,8 @@ class MotionExtension(omni.ext.IExt):
             else:
                 self.camera = None
 
-            if self.articulation:
-                prim = self.articulation
-                self.articulation = Articulation(prim)
+            if self.articulation_path:
+                self.articulation = Articulation(self.articulation_path)
                 print(
                     "[MotionExtension] Extension articulation {} ({})".format(
                         self.articulation, self.articulation.dof_names
@@ -138,7 +137,9 @@ class MotionExtension(omni.ext.IExt):
                         self.dynamic_control
                     )
                 )
-                self.articulation_prim = self.dynamic_control.get_articulation(prim)
+                self.articulation_prim = self.dynamic_control.get_articulation(
+                    self.articulation_path
+                )
 
         async def v(self):
             try:
@@ -190,9 +191,25 @@ class MotionExtension(omni.ext.IExt):
             - delta_t: time step (seconds)
             """
             # Get current end effector pose
-            current_ee_pos, current_ee_rot = self.articulation.get_joint_world_pose(
-                self.effector
-            )
+            # Get the articulation handle
+            articulation = self.dynamic_control.get_articulation(self.articulation_path)
+
+            link_name = self.effector
+            # Iterate through all links to find the desired one
+            for i in range(
+                self.dynamic_control.get_articulation_link_count(articulation)
+            ):
+                link = self.dynamic_control.get_articulation_link(articulation, i)
+                if (
+                    self.dynamic_control.get_articulation_link_name(articulation, link)
+                    == link_name
+                ):
+                    # Get the pose of the link in the world frame
+                    pose = self.dynamic_control.get_rigid_body_pose(link)
+                    current_ee_pos = pose.p
+                    current_ee_rot = pose.r
+                    print(f"Position: {position}, Orientation: {orientation}")
+                    break
 
             # Compute linear velocity
             linear_velocity = delta_p / delta_t  # [vx, vy, vz]

@@ -3,7 +3,7 @@ import omni.usd
 import omni.kit.app
 from omni.isaac.sensor import Camera
 from omni.isaac.core.articulations import Articulation
-from omni.isaac.motion_generation import ArticulationMotionPolicy, RmpFlow
+from omni.isaac.dynamic_control import _dynamic_control
 import asyncio, websockets, toml, json, os, socket
 import numpy as np
 
@@ -112,10 +112,14 @@ class MotionExtension(omni.ext.IExt):
                         self.articulation, self.articulation.dof_names
                     )
                 )
-                self.policy = ArticulationMotionPolicy(
-                    self.articulation, RmpFlow(self.articulation)
+                self.dynamic_control = (
+                    _dynamic_control.acquire_dynamic_control_interface()
                 )
-                print("[MotionExtension] Extension policy {}".format(self.policy))
+                print(
+                    "[MotionExtension] Extension dynamic_control {}".format(
+                        self.dynamic_control
+                    )
+                )
 
         async def v(self):
             try:

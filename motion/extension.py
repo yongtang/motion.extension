@@ -193,23 +193,25 @@ class MotionExtension(omni.ext.IExt):
             # Get current end effector pose
             # Get the articulation handle
             articulation = self.dynamic_control.get_articulation(self.articulation_path)
-
             link_name = self.effector
-            # Iterate through all links to find the desired one
-            for i in range(
-                self.dynamic_control.get_articulation_link_count(articulation)
-            ):
-                link = self.dynamic_control.get_articulation_link(articulation, i)
-                if (
-                    self.dynamic_control.get_articulation_link_name(articulation, link)
-                    == link_name
-                ):
-                    # Get the pose of the link in the world frame
-                    pose = self.dynamic_control.get_rigid_body_pose(link)
-                    current_ee_pos = pose.p
-                    current_ee_rot = pose.r
-                    print(f"Position: {position}, Orientation: {orientation}")
-                    break
+
+            # Find the specific link within the articulation
+            link_index = self.dynamic_control.find_articulation_body_index(
+                articulation, link_name
+            )
+            if link_index == -1:
+                raise ValueError(
+                    f"Link '{link_name}' not found in articulation '{articulation_path}'."
+                )
+
+            # Get the link handle
+            link = self.dynamic_control.get_articulation_body(articulation, link_index)
+
+            # Get the pose of the link in the world frame
+            pose = self.dynamic_control.get_rigid_body_pose(link)
+            current_ee_pos = pose.p
+            current_ee_rot = pose.r
+            print("[MotionExtension] Extension pose {}".format(pose))
 
             # Compute linear velocity
             linear_velocity = delta_p / delta_t  # [vx, vy, vz]

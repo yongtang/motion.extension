@@ -228,8 +228,6 @@ class MotionExtension(omni.ext.IExt):
 
             self.step_position = self.position
 
-        print("[MotionExtension] Extension curr {} {}".format(position, orientation))
-
     def on_shutdown(self):
         async def f(self):
             if getattr(self, "server_task") and self.server_task:

@@ -201,7 +201,7 @@ class MotionExtension(omni.ext.IExt):
             )
             if link_index == -1:
                 raise ValueError(
-                    f"Link '{link_name}' not found in articulation '{articulation_path}'."
+                    f"Link '{link_name}' not found in articulation '{self.articulation_path}'."
                 )
 
             # Get the link handle

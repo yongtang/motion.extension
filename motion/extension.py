@@ -190,7 +190,7 @@ class MotionExtension(omni.ext.IExt):
             - delta_t: time step (seconds)
             """
             # Get current end effector pose
-            current_ee_pos, current_ee_rot = self.articulation.get_world_pose(
+            current_ee_pos, current_ee_rot = self.articulation.get_joint_world_pose(
                 self.effector
             )
 

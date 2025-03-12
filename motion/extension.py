@@ -5,6 +5,7 @@ from omni.isaac.sensor import Camera
 from omni.isaac.core.articulations import Articulation
 from omni.isaac.dynamic_control import _dynamic_control
 from scipy.spatial.transform import Rotation as R
+import PIL.Image, io.BytesIO
 import asyncio, websockets, toml, json, os, socket
 import numpy as np
 
@@ -13,10 +14,13 @@ class MotionExtension(omni.ext.IExt):
     def __init__(self):
         super().__init__()
 
-        camera = None
-        articulation = None
-        server = "ws://localhost:8081"
-        effector = None
+        self.config = {
+            "camera": None,
+            "effector": None,
+            "articulation": None,
+            "server": "ws://localhost:8081",
+        }
+
         try:
             ext_manager = omni.kit.app.get_app().get_extension_manager()
             ext_id = ext_manager.get_extension_id_by_module(__name__)
@@ -25,29 +29,60 @@ class MotionExtension(omni.ext.IExt):
             print("[MotionExtension] Extension config: {}".format(config))
             config = toml.load(config)
             print("[MotionExtension] Extension config: {}".format(config))
-            camera = config.get("camera", camera) or camera
-            articulation = config.get("articulation", articulation) or articulation
-            server = config.get("server", server) or server
-            effector = config.get("effector", effector) or effector
+            self.config["camera"] = (
+                config.get("camera", self.config["camera"]) or self.config["camera"]
+            )
+            self.config["effector"] = (
+                config.get("effector", self.config["effector"])
+                or self.config["effector"]
+            )
+            self.config["articulation"] = (
+                config.get("articulation", self.config["articulation"])
+                or self.config["articulation"]
+            )
+            self.config["server"] = (
+                config.get("server", self.config["server"]) or self.config["server"]
+            )
         except Exception as e:
             print("[MotionExtension] Extension config: {}".format(e))
-        print("[MotionExtension] Extension camera: {}".format(camera))
-        print("[MotionExtension] Extension articulation: {}".format(articulation))
-        print("[MotionExtension] Extension server: {}".format(server))
-        print("[MotionExtension] Extension effector: {}".format(effector))
+        print("[MotionExtension] Extension config: {}".format(self.config))
 
-        self.camera = camera
-        self.articulation_path = articulation
-        self.server = server
-        self.effector = effector
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def on_startup(self, ext_id):
         async def f(self):
+            context = omni.usd.get_context()
+            while context.get_stage() is None:
+                print("[MotionExtension] Extension world wait")
+                await asyncio.sleep(0.5)
+            print("[MotionExtension] Extension world ready")
+
+            stage = context.get_stage()
+            print("[MotionExtension] Extension stage {}".format(stage))
+
+            if (
+                self.config["camera"]
+                and stage.GetPrimAtPath(self.config["camera"]).IsValid()
+            ):
+                self.camera = Camera(prim_path=self.config["camera"])
+                self.camera.initialize()
+                print("[MotionExtension] Extension camera {}".format(self.camera))
+            else:
+                self.camera = None
+
+            if self.config["articulation"]:
+                self.articulation = Articulation(self.config["articulation"])
+                print(
+                    "[MotionExtension] Extension articulation {} ({})".format(
+                        self.articulation, self.articulation.dof_names
+                    )
+                )
+
+        async def g(self):
             try:
                 while self.running:
                     try:
-                        async with websockets.connect(self.server) as ws:
+                        async with websockets.connect(self.config["server"]) as ws:
                             await ws.send("SUB test.subject 1\r\n")
                             while self.running:
                                 try:
@@ -105,42 +140,6 @@ class MotionExtension(omni.ext.IExt):
             finally:
                 print("[MotionExtension] Extension server exit")
 
-        async def g(self):
-            context = omni.usd.get_context()
-            while context.get_stage() is None:
-                print("[MotionExtension] Extension world wait")
-                await asyncio.sleep(0.5)
-            print("[MotionExtension] Extension world ready")
-
-            stage = context.get_stage()
-            print("[MotionExtension] Extension stage {}".format(stage))
-
-            if self.camera and stage.GetPrimAtPath(self.camera).IsValid():
-                self.camera = Camera(prim_path=self.camera)
-                self.camera.initialize()
-                print("[MotionExtension] Extension camera {}".format(self.camera))
-            else:
-                self.camera = None
-
-            if self.articulation_path:
-                self.articulation = Articulation(self.articulation_path)
-                print(
-                    "[MotionExtension] Extension articulation {} ({})".format(
-                        self.articulation, self.articulation.dof_names
-                    )
-                )
-                self.dynamic_control = (
-                    _dynamic_control.acquire_dynamic_control_interface()
-                )
-                print(
-                    "[MotionExtension] Extension dynamic_control {}".format(
-                        self.dynamic_control
-                    )
-                )
-                self.articulation_prim = self.dynamic_control.get_articulation(
-                    self.articulation_path
-                )
-
         async def v(self):
             try:
                 while self.running:
@@ -149,9 +148,13 @@ class MotionExtension(omni.ext.IExt):
                         if len(image):
                             image = np.array(image, dtype=np.uint8)  # RGBA
                             assert image.shape[-1] == 4, "camera {}".format(image.shape)
-                            image = image[:, :, :3][:, :, ::-1]  # BGR
+                            image = image[:, :, :3]  # Remove alpha channel, keep RGB
                             assert image.shape[-1] == 3, "camera {}".format(image.shape)
-                            self.socket.sendto(image.tobytes(), ("127.0.0.1", 6000))
+                            buffer = io.BytesIO()
+                            PIL.Image.fromarray(image, mode="RGB").save(
+                                buffer, format="JPEG2000", quality_mode="lossless"
+                            )
+                            self.socket.sendto(buffer.getvalue(), ("127.0.0.1", 6000))
                     except asyncio.CancelledError:
                         raise
                     except Exception as e:
@@ -167,8 +170,8 @@ class MotionExtension(omni.ext.IExt):
 
         self.running = True
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(g(self))
-        self.server_task = loop.create_task(f(self))
+        loop.run_until_complete(f(self))
+        self.server_task = loop.create_task(g(self))
         self.camera_task = loop.create_task(v(self)) if self.camera else None
         print("[MotionExtension] Extension startup")
 
@@ -181,99 +184,22 @@ class MotionExtension(omni.ext.IExt):
     def step(self, delta: float):
         print("[MotionExtension] Extension step {}".format(delta))
 
-        def apply_differential_ik(delta_p, delta_r, delta_t):
-            """
-            Apply Differential IK (Jacobian-based) to move the end-effector smoothly over time.
-
-            Arguments:
-            - delta_p: [dx, dy, dz] position displacement
-            - delta_r: [dqx, dqy, dqz, dqw] quaternion rotation change
-            - delta_t: time step (seconds)
-            """
-            # Get current end effector pose
-            # Get the articulation handle
-            articulation = self.dynamic_control.get_articulation(self.articulation_path)
-            link_name = self.effector
-
-            # Find the specific link within the articulation
-            link_index = self.dynamic_control.find_articulation_body_index(
-                articulation, link_name
-            )
-            if link_index == -1:
-                raise ValueError(
-                    f"Link '{link_name}' not found in articulation '{self.articulation_path}'."
-                )
-
-            # Get the link handle
-            link = self.dynamic_control.get_articulation_body(articulation, link_index)
-
-            # Get the pose of the link in the world frame
-            pose = self.dynamic_control.get_rigid_body_pose(link)
-            current_ee_pos = pose.p
-            current_ee_rot = pose.r
-            print("[MotionExtension] Extension pose {}".format(pose))
-
-            # Compute linear velocity
-            linear_velocity = delta_p / delta_t  # [vx, vy, vz]
-
-            # Compute current and desired rotations
-            current_rot = R.from_quat(current_ee_rot)  # Current rotation
-            desired_rot = R.from_quat(delta_r)  # Desired rotation
-
-            # Compute relative rotation (delta rotation)
-            delta_rot = desired_rot * current_rot.inv()
-
-            # Convert delta rotation to angular velocity
-            angular_velocity = delta_rot.as_rotvec() / delta_t  # [wx, wy, wz]
-
-            # Combine linear and angular velocities
-            cartesian_velocity = np.hstack(
-                (linear_velocity, angular_velocity)
-            )  # Shape: (6,)
-
-            # Compute Jacobian matrix
-            jacobian_matrix = self.articulation.compute_jacobian(
-                effector
-            )  # Shape: (6, num_joints)
-
-            # Compute pseudoinverse of the Jacobian
-            jacobian_pinv = np.linalg.pinv(jacobian_matrix)  # Shape: (num_joints, 6)
-
-            # Compute joint velocities
-            joint_velocities = (
-                jacobian_pinv @ cartesian_velocity
-            )  # Shape: (num_joints,)
-
-            # Apply joint velocities to the robot
-            # articulation_prim = dc.get_articulation(robot_prim_path)
-            # dc.set_articulation_dof_velocity_targets(articulation_prim, joint_velocities)
-
-            # Do NOT call `dc.step(delta_t)` in an extension! The simulation loop handles stepping.
-
-            return joint_velocities
-
         if self.position is not None:
+            value = self.position
             if self.step_position is not None:
-                delta_p = self.position[:3] - self.step_position[:3]
+                delta_p = value[:3] - value[:3]
                 delta_r = (
-                    R.from_quat(self.position[3:])
-                    * R.from_quat(self.step_position[3:]).inv()
+                    R.from_quat(value[3:]) * R.from_quat(value[3:]).inv()
                 ).as_quat()
-
-                joint_velocities = apply_differential_ik(delta_p, delta_r, delta)
-
-                articulation_prim = self.dynamic_control.get_articulation(
-                    robot_prim_path
+                print(
+                    "[MotionExtension] Extension step {} {} {}".format(
+                        delta_p, delta_r, delta
+                    )
                 )
-                self.dynamic_control.set_articulation_dof_velocity_targets(
-                    articulation_prim, joint_velocities
-                )
-
-                print("[MotionExtension] Extension {}".format(joint_velocities))
-            self.step_position = self.position
+            self.step_position = value
 
     def on_shutdown(self):
-        async def f(self):
+        async def g(self):
             if getattr(self, "server_task") and self.server_task:
                 self.server_task.cancel()
                 try:
@@ -295,6 +221,6 @@ class MotionExtension(omni.ext.IExt):
 
         self.running = False
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(f(self))
+        loop.run_until_complete(g(self))
         loop.run_until_complete(v(self))
         print("[MotionExtension] Extension shutdown")

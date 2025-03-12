@@ -224,10 +224,6 @@ class MotionExtension(omni.ext.IExt):
                 )
 
                 print("[MotionExtension] Extension {}".format(joint_velocities))
-
-                # Step simulation
-                self.dynamic_control.step(delta)
-
             self.step_position = self.position
 
     def on_shutdown(self):

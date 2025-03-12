@@ -4,11 +4,7 @@ import omni.kit.app
 from omni.isaac.sensor import Camera
 from omni.isaac.core.articulations import Articulation
 from omni.isaac.dynamic_control import _dynamic_control
-from omni.isaac.core.utils.transforms import (
-    quat_multiply,
-    quat_inverse,
-    quat_to_rot_matrix,
-)
+from omni.isaac.core.utils.rotations import quat_inv, quat_mul, quat_to_rot_matrix
 import asyncio, websockets, toml, json, os, socket
 import numpy as np
 
@@ -184,9 +180,7 @@ class MotionExtension(omni.ext.IExt):
         if self.position is not None:
             if self.step_position is not None:
                 delta_p = self.position[:3] - self.step_position[:3]
-                delta_r = quat_multiply(
-                    self.position[3:], quat_inverse(self.step_position[3:])
-                )
+                delta_r = quat_mul(self.position[3:], quat_inv(self.step_position[3:]))
 
                 (position, orientation) = self.articulation.get_world_pose(
                     self.effector
@@ -195,9 +189,7 @@ class MotionExtension(omni.ext.IExt):
                 linear = delta_p / delta  # [vx, vy, vz]
 
                 # Compute angular velocity from quaternion difference
-                rotation = quat_multiply(
-                    delta_r, quat_inverse(orientation)
-                )  # Relative rotation
+                rotation = quat_mul(delta_r, quat_inv(orientation))  # Relative rotation
                 angular = quat_to_rot_matrix(rotation)[:3, 2] / delta  # [wx, wy, wz]
 
                 cartesian = np.hstack((linear, angular))  # Shape: (6,)

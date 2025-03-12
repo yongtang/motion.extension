@@ -149,6 +149,15 @@ class MotionExtension(omni.ext.IExt):
         self.camera_task = loop.create_task(v(self)) if self.camera else None
         print("[MotionExtension] Extension startup")
 
+        self.subscription = (
+            omni.kit.app.get_app()
+            .get_update_event_stream()
+            .create_subscription_to_pop(self.step, name="StepFunction")
+        )
+
+    def step(self, delta: float):
+        print("[MotionExtension] Extension step {}", delta)
+
     def on_shutdown(self):
         async def f(self):
             if getattr(self, "server_task") and self.server_task:

@@ -191,7 +191,7 @@ class MotionExtension(omni.ext.IExt):
             """
             # Get current end effector pose
             current_ee_pos, current_ee_rot = self.articulation.get_world_pose(
-                end_effector_path
+                self.effector
             )
 
             # Compute linear velocity
@@ -214,7 +214,7 @@ class MotionExtension(omni.ext.IExt):
 
             # Compute Jacobian matrix
             jacobian_matrix = self.articulation.compute_jacobian(
-                end_effector_path
+                effector
             )  # Shape: (6, num_joints)
 
             # Compute pseudoinverse of the Jacobian

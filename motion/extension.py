@@ -4,7 +4,7 @@ import omni.kit.app
 from omni.isaac.sensor import Camera
 from omni.isaac.core.articulations import Articulation
 from omni.isaac.dynamic_control import _dynamic_control
-from omni.isaac.core.utils.rotations import quat_inv, quat_mul, quat_to_rot_matrix
+from scipy.spatial.transform import Rotation as R
 import asyncio, websockets, toml, json, os, socket
 import numpy as np
 
@@ -189,19 +189,31 @@ class MotionExtension(omni.ext.IExt):
                 linear = delta_p / delta  # [vx, vy, vz]
 
                 # Compute angular velocity from quaternion difference
-                rotation = quat_mul(delta_r, quat_inv(orientation))  # Relative rotation
-                angular = quat_to_rot_matrix(rotation)[:3, 2] / delta  # [wx, wy, wz]
+                current_rot = R.from_quat(rotation)  # Current rotation
+                desired_rot = R.from_quat(delta_r)  # Desired rotation
 
-                cartesian = np.hstack((linear, angular))  # Shape: (6,)
+                # Compute relative rotation (delta rotation)
+                delta_rot = desired_rot * current_rot.inv()
 
-                jacobian_matrix = self.articulation.compute_jacobian(
-                    self.effector
+                # Convert delta rotation to angular velocity
+                angular_velocity = delta_rot.as_rotvec() / delta  # [wx, wy, wz]
+
+                # Combine linear and angular velocities
+                cartesian_velocity = np.hstack(
+                    (linear_velocity, angular_velocity)
+                )  # Shape: (6,)
+
+                # Compute Jacobian matrix
+                jacobian_matrix = robot.compute_jacobian(
+                    end_effector_path
                 )  # Shape: (6, num_joints)
 
-                # Compute joint velocities using Jacobian pseudoinverse
+                # Compute pseudoinverse of the Jacobian
                 jacobian_pinv = np.linalg.pinv(
                     jacobian_matrix
-                )  # Moore-Penrose pseudoinverse
+                )  # Shape: (num_joints, 6)
+
+                # Compute joint velocities
                 joint_velocities = (
                     jacobian_pinv @ cartesian_velocity
                 )  # Shape: (num_joints,)

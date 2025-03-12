@@ -3,7 +3,7 @@ import omni.usd
 import omni.kit.app
 from omni.isaac.sensor import Camera
 from omni.isaac.core.articulations import Articulation
-from omni.isaac.motion_generation import ArticulationMotionPolicy
+from omni.isaac.motion_generation import ArticulationIKSolver
 import asyncio, websockets, toml, json, os, socket
 import numpy as np
 
@@ -112,8 +112,8 @@ class MotionExtension(omni.ext.IExt):
                         self.articulation, self.articulation.dof_names
                     )
                 )
-                self.policy = ArticulationMotionPolicy(self.articulation)
-                print("[MotionExtension] Extension policy {}".format(self.policy))
+                self.solver = ArticulationIKSolver(self.articulation)
+                print("[MotionExtension] Extension solver {}".format(self.solver))
 
         async def v(self):
             try:

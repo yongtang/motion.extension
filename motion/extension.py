@@ -3,6 +3,7 @@ import omni.usd
 import omni.kit.app
 from omni.isaac.sensor import Camera
 from omni.isaac.core.articulations import Articulation
+from omni.isaac.motion_generation import ArticulationMotionPolicy
 import asyncio, websockets, toml, json, os, socket
 import numpy as np
 
@@ -14,6 +15,7 @@ class MotionExtension(omni.ext.IExt):
         camera = None
         articulation = None
         server = "ws://localhost:8081"
+        effector = None
         try:
             ext_manager = omni.kit.app.get_app().get_extension_manager()
             ext_id = ext_manager.get_extension_id_by_module(__name__)
@@ -25,15 +27,18 @@ class MotionExtension(omni.ext.IExt):
             camera = config.get("camera", camera) or camera
             articulation = config.get("articulation", articulation) or articulation
             server = config.get("server", server) or server
+            effector = config.get("effector", effector) or effector
         except Exception as e:
             print("[MotionExtension] Extension config: {}".format(e))
         print("[MotionExtension] Extension camera: {}".format(camera))
         print("[MotionExtension] Extension articulation: {}".format(articulation))
         print("[MotionExtension] Extension server: {}".format(server))
+        print("[MotionExtension] Extension effector: {}".format(effector))
 
         self.camera = camera
         self.articulation = articulation
         self.server = server
+        self.effector = effector
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def on_startup(self, ext_id):
@@ -107,6 +112,8 @@ class MotionExtension(omni.ext.IExt):
                         self.articulation, self.articulation.dof_names
                     )
                 )
+                self.policy = ArticulationMotionPolicy(self.articulation)
+                print("[MotionExtension] Extension policy {}".format(self.policy))
 
         async def v(self):
             try:

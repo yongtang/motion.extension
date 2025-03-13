@@ -5,9 +5,9 @@ from omni.isaac.sensor import Camera
 from omni.isaac.core.articulations import Articulation
 from omni.isaac.dynamic_control import _dynamic_control
 from scipy.spatial.transform import Rotation as R
-import PIL.Image, io.BytesIO
-import asyncio, websockets, toml, json, os, socket
+import asyncio, websockets, toml, json, os, socket, io
 import numpy as np
+import PIL.Image
 
 
 class MotionExtension(omni.ext.IExt):

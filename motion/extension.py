@@ -50,9 +50,10 @@ class MotionExtension(omni.ext.IExt):
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.encoder = nvc.CreateEncoder(
-            width=1280,
-            height=720,
-            format="ABGR",
+            1280,
+            720,
+            "ABGR",
+            True,
             codec="h264",
             fps=30,
             bitrate=4000000,  # 4 Mbps bitrate

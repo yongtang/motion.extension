@@ -160,11 +160,17 @@ class MotionExtension(omni.ext.IExt):
                             assert image.shape[-1] == 4, "camera {}".format(image.shape)
                             image = image[:, :, :3]  # Remove alpha channel, keep RGB
                             assert image.shape[-1] == 3, "camera {}".format(image.shape)
-                            buffer = io.BytesIO()
-                            PIL.Image.fromarray(image, mode="RGB").save(
-                                buffer, format="JPEG2000", quality_mode="lossless"
-                            )
-                            self.socket.sendto(buffer.getvalue(), ("127.0.0.1", 6000))
+
+                            # buffer = io.BytesIO()
+                            # PIL.Image.fromarray(image, mode="RGB").save(
+                            #     buffer, format="JPEG2000", quality_mode="lossless"
+                            # )
+                            # self.socket.sendto(buffer.getvalue(), ("127.0.0.1", 6000))
+                            image = np.ascontiguousarray(
+                                image, dtype=np.uint8
+                            )  # Convert frame to contiguous format
+                            encoded = encoder.encode(image)  # Encode using NVIDIA NVENC
+                            self.socket.sendto(encoded, ("127.0.0.1", 6000))
                     except asyncio.CancelledError:
                         raise
                     except Exception as e:

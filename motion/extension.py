@@ -6,6 +6,7 @@ from omni.isaac.core.articulations import Articulation
 from omni.isaac.dynamic_control import _dynamic_control
 from scipy.spatial.transform import Rotation as R
 import asyncio, websockets, toml, json, os, socket, io
+import pynvvideocodec as nvv
 import numpy as np
 import PIL.Image
 
@@ -48,6 +49,15 @@ class MotionExtension(omni.ext.IExt):
         print("[MotionExtension] Extension config: {}".format(self.config))
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.encoder = nvv.Encoder(
+            codec="h264",
+            width=1280,
+            height=720,
+            fps=30,
+            bitrate=4000000,  # 4 Mbps bitrate
+            profile="baseline",  # H.264 Baseline profile (iPhone compatible)
+            packetization_mode=1,  # Required for iPhone WebRTC
+        )
 
     def on_startup(self, ext_id):
         async def f(self):

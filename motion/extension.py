@@ -6,7 +6,7 @@ from omni.isaac.core.articulations import Articulation
 from omni.isaac.dynamic_control import _dynamic_control
 from scipy.spatial.transform import Rotation as R
 import asyncio, websockets, toml, json, os, socket, io
-import PyNvVideoCodec as nvv
+import PyNvVideoCodec as nvc
 import numpy as np
 import PIL.Image
 
@@ -49,10 +49,11 @@ class MotionExtension(omni.ext.IExt):
         print("[MotionExtension] Extension config: {}".format(self.config))
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.encoder = nvv.Encoder(
-            codec="h264",
+        self.encoder = nvc.CreateEncoder(
             width=1280,
             height=720,
+            format="ABGR",
+            codec="h264",
             fps=30,
             bitrate=4000000,  # 4 Mbps bitrate
             profile="baseline",  # H.264 Baseline profile (iPhone compatible)
@@ -158,8 +159,8 @@ class MotionExtension(omni.ext.IExt):
                         if len(image):
                             image = np.array(image, dtype=np.uint8)  # RGBA
                             assert image.shape[-1] == 4, "camera {}".format(image.shape)
-                            image = image[:, :, :3]  # Remove alpha channel, keep RGB
-                            assert image.shape[-1] == 3, "camera {}".format(image.shape)
+                            image = image[:, :, [3, 2, 1, 0]]  # RGBA => ABGR
+                            assert image.shape[-1] == 4, "camera {}".format(image.shape)
 
                             # buffer = io.BytesIO()
                             # PIL.Image.fromarray(image, mode="RGB").save(

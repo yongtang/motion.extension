@@ -172,7 +172,7 @@ class MotionExtension(omni.ext.IExt):
                                 image, dtype=np.uint8
                             )  # Convert frame to contiguous format
                             encoded = self.encoder.Encode(
-                                image
+                                image.tobytes()
                             )  # Encode using NVIDIA NVENC
                             self.socket.sendto(encoded, ("127.0.0.1", 6000))
                     except asyncio.CancelledError:

@@ -6,7 +6,7 @@ from omni.isaac.core.articulations import Articulation
 from omni.isaac.dynamic_control import _dynamic_control
 from scipy.spatial.transform import Rotation as R
 import asyncio, websockets, toml, json, os, socket, io
-import pynvvideocodec as nvv
+import PyNvVideoCodec as nvv
 import numpy as np
 import PIL.Image
 

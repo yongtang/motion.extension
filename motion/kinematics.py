@@ -136,12 +136,18 @@ class MotionKinematicsExtension(omni.ext.IExt):
                 )
                 world.add_physics_callback("on_physics_step", self.on_physics_step)
                 self.subscription = None
+                from .simple_stack import SimpleStack
+
+                self.stack = SimpleStack(world=world)
+                self.stack.setup_post_load()
                 return
         except Exception as e:
             print("[MotionKinematicsExtension] Extension world: {}".format(e))
 
     def on_physics_step(self, step_size):
         print("[MotionKinematicsExtension] Extension step: {}".format(step_size))
+        delta_p, delta_r = self.delta()
+        self.stack.call_physics_step(delta_p, delta_r, step_size)
 
     def delta(self):
         print(

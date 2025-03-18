@@ -145,18 +145,16 @@ class MotionKinematicsExtension(omni.ext.IExt):
             print("[MotionKinematicsExtension] Extension world: {}".format(e))
 
     def on_physics_step(self, step_size):
-        print("[MotionKinematicsExtension] Extension step: {}".format(step_size))
         delta_p, delta_r = self.delta()
         if delta_p is not None and delta_r is not None:
+            print(
+                "[MotionKinematicsExtension] Extension step: {} {} {}".format(
+                    delta_p, delta_r, step_size
+                )
+            )
             self.stack.call_physics_step(delta_p, delta_r, step_size)
 
     def delta(self):
-        print(
-            "[MotionKinematicsExtension] Extension delta: {} {}",
-            self.kinematics_pose,
-            self.kinematics_step,
-        )
-
         delta_p, delta_r = None, None
         if self.kinematics_pose is not None:
             value = self.kinematics_pose
@@ -221,11 +219,6 @@ class MotionKinematicsExtension(omni.ext.IExt):
                         )
                     ).inv()
                 ).as_quat()
-                print(
-                    "[MotionKinematicsExtension] Extension delta: {} {}".format(
-                        delta_p, delta_r
-                    )
-                )
             self.kinematics_step = value
         return delta_p, delta_r
 

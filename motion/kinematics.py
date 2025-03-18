@@ -147,7 +147,8 @@ class MotionKinematicsExtension(omni.ext.IExt):
     def on_physics_step(self, step_size):
         print("[MotionKinematicsExtension] Extension step: {}".format(step_size))
         delta_p, delta_r = self.delta()
-        self.stack.call_physics_step(delta_p, delta_r, step_size)
+        if delta_p is not None and delta_r is not None:
+            self.stack.call_physics_step(delta_p, delta_r, step_size)
 
     def delta(self):
         print(
@@ -156,12 +157,33 @@ class MotionKinematicsExtension(omni.ext.IExt):
             self.kinematics_step,
         )
 
-        delta_p, delta_r = np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0, 1.0])
+        delta_p, delta_r = None, None
         if self.kinematics_pose is not None:
             value = self.kinematics_pose
             if (
                 self.kinematics_step is not None
                 and self.kinematics_step["channel"] == value["channel"]
+                and (
+                    (value["position"]["x"] != self.kinematics_step["position"]["x"])
+                    or (value["position"]["y"] != self.kinematics_step["position"]["y"])
+                    or (value["position"]["z"] != self.kinematics_step["position"]["z"])
+                    or (
+                        value["orientation"]["x"]
+                        != self.kinematics_step["orientation"]["x"]
+                    )
+                    or (
+                        value["orientation"]["y"]
+                        != self.kinematics_step["orientation"]["y"]
+                    )
+                    or (
+                        value["orientation"]["z"]
+                        != self.kinematics_step["orientation"]["z"]
+                    )
+                    or (
+                        value["orientation"]["w"]
+                        != self.kinematics_step["orientation"]["w"]
+                    )
+                )
             ):
                 delta_p = np.array(
                     (

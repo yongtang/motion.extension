@@ -43,6 +43,9 @@ class MotionKinematicsExtension(omni.ext.IExt):
             print("[MotionKinematicsExtension] Extension config: {}".format(e))
         print("[MotionKinematicsExtension] Extension config: {}".format(self.config))
 
+        self.kinematics_pose = None
+        self.kinematics_step = None
+
     def on_startup(self, ext_id):
         async def f(self):
             context = omni.usd.get_context()
@@ -134,6 +137,8 @@ class MotionKinematicsExtension(omni.ext.IExt):
                         world, world.stage
                     )
                 )
+                if world.physics_callback_exists("on_physics_step"):
+                    world.remove_physics_callback("on_physics_step")
                 world.add_physics_callback("on_physics_step", self.on_physics_step)
                 self.subscription = None
                 from .simple_stack import SimpleStack

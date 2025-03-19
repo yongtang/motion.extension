@@ -272,13 +272,13 @@ class MotionKinematicsExtension(omni.ext.IExt):
             (orientation[3], orientation[0], orientation[1], orientation[2])
         )
 
-        kinematics = self.solver.compute_inverse_kinematics(
+        kinematics, success = self.solver.compute_inverse_kinematics(
             target_position=target_position, target_orientation=target_orientation
         )
-        print("[MotionKinematicsExtension] Extension kinematics: {}".format(kinematics))
+        print("[MotionKinematicsExtension] Extension kinematics: {} {}".format(kinematics, success))
 
-        if kinematics.success:
-            self.controller.apply_action(joint_positions=kinematics.joint_positions)
+        if success:
+            self.controller.apply_action(kinematics)
 
         # self.stack.call_physics_step(position, orientation, step_size)
 

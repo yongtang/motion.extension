@@ -169,7 +169,7 @@ class MotionKinematicsExtension(omni.ext.IExt):
         ):
             # step => pose - pose(last) + link, delta = link - pose(last)
             position, orientation = XFormPrim(
-                "{}/{}".format(self.config["effector"], self.config["effector"])
+                "{}/{}".format(self.config["articulation"], self.config["effector"])
             ).get_world_pose()
 
             print(

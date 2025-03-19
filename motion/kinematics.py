@@ -204,7 +204,7 @@ class MotionKinematicsExtension(omni.ext.IExt):
             )
             return
 
-        # step => pose - pose(last) + link, delta = link - pose(last), step => pose - delta
+        # step => pose - pose(last) + link, delta = link - pose(last), step => pose + delta
         delta = self.kinematics_delta
         position = np.array(
             (
@@ -212,7 +212,7 @@ class MotionKinematicsExtension(omni.ext.IExt):
                 pose["position"]["y"],
                 pose["position"]["z"],
             )
-        ) - np.array(
+        ) + np.array(
             (
                 delta["position"]["x"],
                 delta["position"]["y"],
@@ -223,6 +223,16 @@ class MotionKinematicsExtension(omni.ext.IExt):
             R.from_quat(
                 np.array(
                     (
+                        delta["orientation"]["x"],
+                        delta["orientation"]["y"],
+                        delta["orientation"]["z"],
+                        delta["orientation"]["w"],
+                    )
+                )
+            )
+            * R.from_quat(
+                np.array(
+                    (
                         pose["orientation"]["x"],
                         pose["orientation"]["y"],
                         pose["orientation"]["z"],
@@ -230,16 +240,6 @@ class MotionKinematicsExtension(omni.ext.IExt):
                     )
                 )
             )
-            * R.from_quat(
-                np.array(
-                    (
-                        delta["orientation"]["x"],
-                        delta["orientation"]["y"],
-                        delta["orientation"]["z"],
-                        delta["orientation"]["w"],
-                    )
-                )
-            ).inv()
         ).as_quat()
         self.stack.call_physics_step(position, orientation, step_size)
 

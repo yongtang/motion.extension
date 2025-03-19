@@ -64,7 +64,7 @@ class MotionKinematicsExtension(omni.ext.IExt):
                 self.articulation.initialize()
                 self.controller = self.articulation.get_articulation_controller()
                 self.solver = ArticulationKinematicsSolver(
-                    self.articulation, end_effector_prim_path=self.config["effector"]
+                    self.articulation, self.config["effector"]
                 )
                 print(
                     "[MotionKinematicsExtension] Extension articulation {} ({}) {} {}".format(

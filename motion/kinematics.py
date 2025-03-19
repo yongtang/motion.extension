@@ -168,7 +168,9 @@ class MotionKinematicsExtension(omni.ext.IExt):
             or self.kinematics_delta["channel"] != pose["channel"]
         ):
             # step => pose - pose(last) + link, delta = link - pose(last)
-            position, orientation = XFormPrim(self.config["effector"]).get_world_pose()
+            position, orientation = XFormPrim(
+                "{}/{}".format(self.config["effector"], self.config["effector"])
+            ).get_world_pose()
 
             print(
                 "[MotionKinematicsExtension] Extension reference pose: {} {}".format(

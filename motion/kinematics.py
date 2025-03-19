@@ -3,9 +3,8 @@ import omni.usd
 import omni.kit.app
 from omni.isaac.core import World
 from omni.isaac.core.prims import XFormPrim
-from omni.isaac.universal_robots import UR10
-
-# from omni.isaac.core.articulations import Articulation
+# from omni.isaac.universal_robots import UR10
+from omni.isaac.core.articulations import Articulation
 from omni.isaac.universal_robots.kinematics_solver import KinematicsSolver
 from scipy.spatial.transform import Rotation as R
 import asyncio, websockets, toml, json, os

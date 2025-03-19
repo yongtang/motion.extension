@@ -62,9 +62,10 @@ class MotionKinematicsExtension(omni.ext.IExt):
 
             if self.config["articulation"]:
                 self.articulation = Articulation(self.config["articulation"])
-                while not self.articulation.handles_initialized:
-                    print("[MotionKinematicsExtension] Extension articulation wait")
-                    await asyncio.sleep(1)
+                self.articulation.initialize()
+                #while not self.articulation.handles_initialized:
+                #    print("[MotionKinematicsExtension] Extension articulation wait")
+                #    await asyncio.sleep(1)
 
                 self.controller = self.articulation.get_articulation_controller()
                 self.solver = KinematicsSolver(

@@ -3,6 +3,8 @@ import omni.usd
 import omni.kit.app
 from omni.isaac.core import World
 from omni.isaac.core.prims import XFormPrim
+from omni.isaac.core.articulations import Articulation
+from omni.isaac.motion_generation import ArticulationKinematicsSolver
 from scipy.spatial.transform import Rotation as R
 import asyncio, websockets, toml, json, os
 import numpy as np
@@ -15,6 +17,7 @@ class MotionKinematicsExtension(omni.ext.IExt):
         self.config = {
             "subject": "subject.pose",
             "effector": None,
+            "articulation": None,
             "server": "ws://localhost:8081",
         }
 
@@ -29,6 +32,10 @@ class MotionKinematicsExtension(omni.ext.IExt):
             self.config["effector"] = (
                 config.get("effector", self.config["effector"])
                 or self.config["effector"]
+            )
+            self.config["articulation"] = (
+                config.get("articulation", self.config["articulation"])
+                or self.config["articulation"]
             )
             self.config["server"] = (
                 config.get("server", self.config["server"]) or self.config["server"]
@@ -51,6 +58,22 @@ class MotionKinematicsExtension(omni.ext.IExt):
 
             stage = context.get_stage()
             print("[MotionKinematicsExtension] Extension stage {}".format(stage))
+
+            if self.config["articulation"]:
+                self.articulation = Articulation(self.config["articulation"])
+                self.articulation.initialize()
+                self.controller = self.articulation.get_articulation_controller()
+                self.solver = ArticulationKinematicsSolver(
+                    self.articulation, end_effector_prim_path=self.config["effector"]
+                )
+                print(
+                    "[MotionKinematicsExtension] Extension articulation {} ({}) {} {}".format(
+                        self.articulation,
+                        self.articulation.dof_names,
+                        self.controller,
+                        self.solver,
+                    )
+                )
 
         async def g(self):
             try:
@@ -128,10 +151,10 @@ class MotionKinematicsExtension(omni.ext.IExt):
                     world.remove_physics_callback("on_physics_step")
                 world.add_physics_callback("on_physics_step", self.on_physics_step)
                 self.subscription = None
-                from .simple_stack import SimpleStack
+                # from .simple_stack import SimpleStack
 
-                self.stack = SimpleStack(world=world)
-                self.stack.setup_post_load()
+                # self.stack = SimpleStack(world=world)
+                # self.stack.setup_post_load()
                 return
         except Exception as e:
             print("[MotionKinematicsExtension] Extension world: {}".format(e))
@@ -241,7 +264,21 @@ class MotionKinematicsExtension(omni.ext.IExt):
                 )
             )
         ).as_quat()
-        self.stack.call_physics_step(position, orientation, step_size)
+
+        target_position = position
+        target_orientation = np.array(
+            (orientation[3], orientation[0], orientation[1], orientation[2])
+        )
+
+        kinematics = self.solver.compute_inverse_kinematics(
+            target_position=target_position, target_orientation=target_orientation
+        )
+        print("[MotionKinematicsExtension] Extension kinematics: {}".format(kinematics))
+
+        if kinematics.success:
+            self.controller.apply_action(joint_positions=kinematics.joint_positions)
+
+        # self.stack.call_physics_step(position, orientation, step_size)
 
         return
 

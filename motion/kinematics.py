@@ -2,8 +2,7 @@ import omni.ext
 import omni.usd
 import omni.kit.app
 from omni.isaac.core import World
-from omni.isaac.core.articulations import Articulation
-from omni.isaac.dynamic_control import _dynamic_control
+from omni.isaac.core.prims import XFormPrim
 from scipy.spatial.transform import Rotation as R
 import asyncio, websockets, toml, json, os
 import numpy as np
@@ -16,7 +15,6 @@ class MotionKinematicsExtension(omni.ext.IExt):
         self.config = {
             "subject": "subject.pose",
             "effector": None,
-            "articulation": None,
             "server": "ws://localhost:8081",
         }
 
@@ -32,10 +30,6 @@ class MotionKinematicsExtension(omni.ext.IExt):
                 config.get("effector", self.config["effector"])
                 or self.config["effector"]
             )
-            self.config["articulation"] = (
-                config.get("articulation", self.config["articulation"])
-                or self.config["articulation"]
-            )
             self.config["server"] = (
                 config.get("server", self.config["server"]) or self.config["server"]
             )
@@ -43,8 +37,9 @@ class MotionKinematicsExtension(omni.ext.IExt):
             print("[MotionKinematicsExtension] Extension config: {}".format(e))
         print("[MotionKinematicsExtension] Extension config: {}".format(self.config))
 
+        # step => pose - pose(last) + link, delta = link - pose(last)
         self.kinematics_pose = None
-        self.kinematics_step = None
+        self.kinematics_delta = None
 
     def on_startup(self, ext_id):
         async def f(self):
@@ -56,14 +51,6 @@ class MotionKinematicsExtension(omni.ext.IExt):
 
             stage = context.get_stage()
             print("[MotionKinematicsExtension] Extension stage {}".format(stage))
-
-            if self.config["articulation"]:
-                self.articulation = Articulation(self.config["articulation"])
-                print(
-                    "[MotionKinematicsExtension] Extension articulation {} ({})".format(
-                        self.articulation, self.articulation.dof_names
-                    )
-                )
 
         async def g(self):
             try:
@@ -114,7 +101,7 @@ class MotionKinematicsExtension(omni.ext.IExt):
                 print("[MotionKinematicsExtension] Extension server exit")
 
         self.kinematics_pose = None
-        self.kinematics_step = None
+        self.kinematics_delta = None
 
         self.running = True
         loop = asyncio.get_event_loop()
@@ -150,86 +137,120 @@ class MotionKinematicsExtension(omni.ext.IExt):
             print("[MotionKinematicsExtension] Extension world: {}".format(e))
 
     def on_physics_step(self, step_size):
-        delta_p, delta_r = self.delta()
-        if delta_p is not None and delta_r is not None:
+        pose = self.kinematics_pose
+        if pose is None:
+            return
+        if (
+            self.kinematics_delta is None
+            or self.kinematics_delta["channel"] != pose["channel"]
+        ):
+            # step => pose - pose(last) + link, delta = link - pose(last)
+            position, orientation = XFormPrim(self.config["effector"]).get_world_pose()
+
             print(
-                "[MotionKinematicsExtension] Extension step: {} {} {}".format(
-                    delta_p, delta_r, step_size
+                "[MotionKinematicsExtension] Extension reference pose: {} {}".format(
+                    position, orientation
                 )
             )
-            self.stack.call_physics_step(delta_p, delta_r, step_size)
 
-    def delta(self):
-        delta_p, delta_r = None, None
-        if self.kinematics_pose is not None:
-            value = self.kinematics_pose
-            if (
-                self.kinematics_step is not None
-                and self.kinematics_step["channel"] == value["channel"]
-                and (
-                    (value["position"]["x"] != self.kinematics_step["position"]["x"])
-                    or (value["position"]["y"] != self.kinematics_step["position"]["y"])
-                    or (value["position"]["z"] != self.kinematics_step["position"]["z"])
-                    or (
-                        value["orientation"]["x"]
-                        != self.kinematics_step["orientation"]["x"]
-                    )
-                    or (
-                        value["orientation"]["y"]
-                        != self.kinematics_step["orientation"]["y"]
-                    )
-                    or (
-                        value["orientation"]["z"]
-                        != self.kinematics_step["orientation"]["z"]
-                    )
-                    or (
-                        value["orientation"]["w"]
-                        != self.kinematics_step["orientation"]["w"]
-                    )
+            delta_p = position - np.array(
+                (
+                    pose["position"]["x"],
+                    pose["position"]["y"],
+                    pose["position"]["z"],
                 )
-            ):
-                delta_p = np.array(
-                    (
-                        value["position"]["x"],
-                        value["position"]["y"],
-                        value["position"]["z"],
-                    )
-                ) - np.array(
-                    (
-                        self.kinematics_step["position"]["x"],
-                        self.kinematics_step["position"]["y"],
-                        self.kinematics_step["position"]["z"],
-                    )
-                )
-
-                delta_r = (
-                    R.from_quat(
-                        np.array(
-                            (
-                                value["orientation"]["x"],
-                                value["orientation"]["y"],
-                                value["orientation"]["z"],
-                                value["orientation"]["w"],
-                            )
+            )
+            delta_o = (
+                R.from_quat(
+                    np.array(
+                        (
+                            orientation[1],
+                            orientation[2],
+                            orientation[3],
+                            orientation[0],
                         )
                     )
-                    * R.from_quat(
-                        np.array(
-                            (
-                                self.kinematics_step["orientation"]["x"],
-                                self.kinematics_step["orientation"]["y"],
-                                self.kinematics_step["orientation"]["z"],
-                                self.kinematics_step["orientation"]["w"],
-                            )
+                )
+                * R.from_quat(
+                    np.array(
+                        (
+                            pose["orientation"]["x"],
+                            pose["orientation"]["y"],
+                            pose["orientation"]["z"],
+                            pose["orientation"]["w"],
                         )
-                    ).inv()
-                ).as_quat()
-            self.kinematics_step = value
-        return delta_p, delta_r
+                    )
+                ).inv()
+            ).as_quat()
+
+            self.kinematics_delta = {
+                "position": {
+                    "x": delta_p[0],
+                    "y": delta_p[1],
+                    "z": delta_p[2],
+                },
+                "orientation": {
+                    "x": delta_o[0],
+                    "y": delta_o[1],
+                    "z": delta_o[2],
+                    "w": delta_o[3],
+                },
+                "channel": pose["channel"],
+            }
+            print(
+                "[MotionKinematicsExtension] Extension reference delta: {} {}".format(
+                    self.kinematics_delta
+                )
+            )
+            return
+
+        # step => pose - pose(last) + link, delta = link - pose(last), step => pose - delta
+        delta = self.kinematics_delta
+        position = np.array(
+            (
+                pose["position"]["x"],
+                pose["position"]["y"],
+                pose["position"]["z"],
+            )
+        ) - np.array(
+            (
+                delta["position"]["x"],
+                delta["position"]["y"],
+                delta["position"]["z"],
+            )
+        )
+        orientation = (
+            R.from_quat(
+                np.array(
+                    (
+                        pose["orientation"]["x"],
+                        pose["orientation"]["y"],
+                        pose["orientation"]["z"],
+                        pose["orientation"]["w"],
+                    )
+                )
+            )
+            * R.from_quat(
+                np.array(
+                    (
+                        delta["orientation"]["x"],
+                        delta["orientation"]["y"],
+                        delta["orientation"]["z"],
+                        delta["orientation"]["w"],
+                    )
+                )
+            ).inv()
+        ).as_quat()
+        self.stack.call_physics_step(position, orientation, step_size)
+
+        return
 
     def on_shutdown(self):
 
         self.subscription = None
+
+        self.kinematics_pose = None
+        self.kinematics_delta = None
 
         async def g(self):
             if getattr(self, "server_task") and self.server_task:

@@ -62,7 +62,7 @@ class MotionKinematicsExtension(omni.ext.IExt):
 
             if self.config["articulation"]:
                 self.articulation = Articulation(self.config["articulation"])
-                while not self.handles_initialized:
+                while not self.articulation.handles_initialized:
                     print("[MotionKinematicsExtension] Extension articulation wait")
                     await asyncio.sleep(1)
 

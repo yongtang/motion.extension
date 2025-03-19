@@ -4,7 +4,8 @@ import omni.kit.app
 from omni.isaac.core import World
 from omni.isaac.core.prims import XFormPrim
 from omni.isaac.universal_robots import UR10
-#from omni.isaac.core.articulations import Articulation
+
+# from omni.isaac.core.articulations import Articulation
 from omni.isaac.universal_robots.kinematics_solver import KinematicsSolver
 from scipy.spatial.transform import Rotation as R
 import asyncio, websockets, toml, json, os
@@ -61,8 +62,11 @@ class MotionKinematicsExtension(omni.ext.IExt):
             print("[MotionKinematicsExtension] Extension stage {}".format(stage))
 
             if self.config["articulation"]:
-                self.articulation = UR10(self.config["articulation"])
-                self.articulation.initialize()
+                self.articulation = Articulation(self.config["articulation"])
+                while not self.articulation.is_initialized():
+                    print("[MotionKinematicsExtension] Extension articulation wait")
+                    await asyncio.sleep(0.5)
+
                 self.controller = self.articulation.get_articulation_controller()
                 self.solver = KinematicsSolver(
                     self.articulation, self.config["effector"]
@@ -276,7 +280,11 @@ class MotionKinematicsExtension(omni.ext.IExt):
         kinematics, success = self.solver.compute_inverse_kinematics(
             target_position=target_position, target_orientation=target_orientation
         )
-        print("[MotionKinematicsExtension] Extension kinematics: {} {}".format(kinematics, success))
+        print(
+            "[MotionKinematicsExtension] Extension kinematics: {} {}".format(
+                kinematics, success
+            )
+        )
 
         if success:
             self.controller.apply_action(kinematics)
